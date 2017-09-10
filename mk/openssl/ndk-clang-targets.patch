@@ -269,7 +269,7 @@ index 000000000..ce11a5ae3
 +    },
 +    "android64-aarch64-clang" => {
 +        inherit_from     => [ "android64-clang", "android64-aarch64-base" ],
-+        cflags           => add(picker(default => "-target aarch64-none-linux-android -I\$(CROSS_SYSROOT)/include/aarch64-linux-android -fno-integrated-as")),
++        cflags           => add(picker(default => "-target aarch64-none-linux-android -I\$(CROSS_SYSROOT)/include/aarch64-linux-android")),
 +        lflags           => add(picker(default => "-target aarch64-none-linux-android")),
 +    },
 +    "android64-x86_64-clang" => {

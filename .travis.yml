@@ -25,7 +25,6 @@ branches:
 
 env:
   global:
-    - NDK_VER=r16-beta1
     - PYBUILD_SRC=$HOME/pybuild-src
   matrix:
     - ANDROID_PLATFORM=arm
@@ -39,10 +38,10 @@ install:
   - |
       pushd $HOME
       HOST_OS="$(uname | tr 'A-Z' 'a-z')"
-      wget https://dl.google.com/android/repository/android-ndk-$NDK_VER-$HOST_OS-x86_64.zip
-      unzip -q android-ndk-$NDK_VER-$HOST_OS-x86_64.zip
+      curl -v -L "https://www.dropbox.com/s/1ml9eho7c3i11rd/ndk-binutils-2.27.tar.bz2?dl=1" > ndk-binutils-2.27.tar.bz2
+      tar xf ndk-binutils-2.27.tar.bz2
       popd
-  - export ANDROID_NDK=$HOME/android-ndk-$NDK_VER
+  - export ANDROID_NDK=$HOME/ndk-binutils-2.27
 
 script:
   - python -m pybuild.clean --package :COMMIT_MARKER,python
