@@ -1,6 +1,7 @@
 from ..package import Package
 from ..patch import LocalPatch
 from ..source import GitSource
+from ..util import target_arch_name
 
 
 class OpenSSL(Package):
@@ -27,7 +28,7 @@ class OpenSSL(Package):
         self.env['HASHBANGSH'] = '/system/bin/sh'
 
     def prepare(self):
-        openssl_target = self.OPENSSL_TARGETS[self.arch]
+        openssl_target = self.OPENSSL_TARGETS[target_arch_name()]
 
         self.run_with_env(['./Configure', '--prefix=/usr', '--openssldir=/etc/ssl', openssl_target, 'no-shared'])
 

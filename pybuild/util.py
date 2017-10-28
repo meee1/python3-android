@@ -20,9 +20,12 @@ def tostring(value: Union[List[argtype], argtype]) -> str:
     return str(value)
 
 
+def target_arch_name() -> str:
+    return os.getenv('ANDROID_PLATFORM', default_target_arch)
+
+
 def target_arch() -> arch.Arch:
-    platform_name = os.getenv('ANDROID_PLATFORM', default_target_arch)
-    return getattr(arch, platform_name)()
+    return getattr(arch, target_arch_name())()
 
 
 def rmtree(path: Path) -> None:

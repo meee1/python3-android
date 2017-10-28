@@ -7,10 +7,9 @@ import urllib.request
 import urllib.error
 
 from . import env
-from .arch import arm, x86, mips, arm64
 from .patch import Patch, RemotePatch
 from .source import Source, GitSource, URLSource
-from .util import BASE, run_in_dir, target_arch
+from .util import BASE, run_in_dir, target_arch, target_arch_name
 
 
 class Package:
@@ -23,9 +22,16 @@ class Package:
     dependencies = []
     skip_uploading: bool = False
 
+    # Check $ANDROID_NDK/build/core/toolchains/*/setup.mk for NDK defaults
+    # regarding -fintegrated-as/-fno-integrated-as. If NDK defaults don't
+    # work, report a bug to https://github.com/android-ndk/ndk
+    ARCH_CFLAGS_DEFAULTS = {
+        'arm': ['-fno-integrated-as'],
+        'mips64': ['-fintegrated-as'],
+    }
+
     def __init__(self):
         self.name = type(self).__name__.lower()
-        self.arch = target_arch().__class__.__name__
 
         if self.version is None and isinstance(self.source, GitSource):
             self.version = 'git'
@@ -75,12 +81,12 @@ class Package:
 
         ARCH_SYSROOT = (ANDROID_NDK / 'platforms' /
                         f'android-{env.android_api_level}' /
-                        f'arch-{self.arch}' / 'usr')
+                        f'arch-{target_arch_name()}' / 'usr')
         UNIFIED_SYSROOT = ANDROID_NDK / 'sysroot' / 'usr'
 
         cflags = ['-fPIC']
-        if isinstance(target_arch(), (arm, x86, mips, arm64)):
-            cflags += ['-fno-integrated-as']
+
+        cflags += self.ARCH_CFLAGS_DEFAULTS.get(target_arch_name(), [])
 
         self.env.update({
             'ANDROID_API_LEVEL': env.android_api_level,
@@ -156,7 +162,7 @@ class Package:
 
     @property
     def bintray_version(self):
-        return f'{self.arch}-{self.version}'
+        return f'{target_arch_name()}-{self.version}'
 
     @property
     def bintray_path(self):
