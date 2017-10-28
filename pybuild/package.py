@@ -27,7 +27,9 @@ class Package:
     # work, report a bug to https://github.com/android-ndk/ndk
     ARCH_CFLAGS_DEFAULTS = {
         'arm': ['-fno-integrated-as'],
-        'mips64': ['-fintegrated-as'],
+        # mips & mips64 requires GNU as due to https://github.com/android-ndk/ndk/issues/399
+        'mips': ['-fno-integrated-as'],
+        'mips64': ['-fno-integrated-as'],
     }
 
     def __init__(self):
