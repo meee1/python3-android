@@ -13,6 +13,8 @@ class Python(Package):
         LocalPatch('cppflags'),
         LocalPatch('skip-build'),
         RemotePatch('https://github.com/python/cpython/pull/139.patch'),
+        LocalPatch('android-disable-lfs'),
+        LocalPatch('5305'),
     ]
 
     dependencies = list(env.packages)

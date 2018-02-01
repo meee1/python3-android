@@ -1,0 +1,339 @@
+From effe1910a43239ab4722369c7603152363e45ddb Mon Sep 17 00:00:00 2001
+From: Victor Stinner <victor.stinner@gmail.com>
+Date: Wed, 24 Jan 2018 18:40:55 +0100
+Subject: [PATCH 1/8] bpo-32654: Fixes for Android API 19
+
+* Avoid setlocale(LC_ALL, NULL) in Py_Main() on API < 20
+* pystrtod.c: avoid localeconv() on API < 21
+* _Py_GetLocaleconvNumeric(): avoid localeconv() on API < 20, use
+  hardcoded values.
+---
+ Modules/main.c       |  9 +++++++++
+ Python/fileutils.c   | 21 +++++++++++++++++++++
+ Python/pystrtod.c    |  6 ++++++
+ 5 files changed, 49 insertions(+)
+
+diff --git a/Modules/main.c b/Modules/main.c
+index 2e632e292c29..cbaac9844aef 100644
+--- a/Modules/main.c
++++ b/Modules/main.c
+@@ -36,6 +36,11 @@
+     "Type \"help\", \"copyright\", \"credits\" or \"license\" " \
+     "for more information."
+ 
++#if defined(__ANDROID_API__) && __ANDROID_API__ < 20
++   /* Before Android API 20, locales are completely broken. */
++#  define BROKEN_LOCALES
++#endif
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+@@ -1936,11 +1941,13 @@ pymain_read_conf(_PyMain *pymain, _Py_CommandLineDetails *cmdline)
+ {
+     int res = -1;
+ 
++#ifndef BROKEN_LOCALES
+     char *oldloc = _PyMem_RawStrdup(setlocale(LC_ALL, NULL));
+     if (oldloc == NULL) {
+         pymain->err = _Py_INIT_NO_MEMORY();
+         goto done;
+     }
++#endif
+ 
+     /* Reconfigure the locale to the default for this process */
+     _Py_SetLocaleFromEnv(LC_ALL);
+@@ -2023,10 +2030,12 @@ pymain_read_conf(_PyMain *pymain, _Py_CommandLineDetails *cmdline)
+     res = 0;
+ 
+ done:
++#ifndef BROKEN_LOCALES
+     if (oldloc != NULL) {
+         setlocale(LC_ALL, oldloc);
+         PyMem_RawFree(oldloc);
+     }
++#endif
+ 
+     return res;
+ }
+diff --git a/Python/fileutils.c b/Python/fileutils.c
+index d610639688ea..6b76bc1bab7d 100644
+--- a/Python/fileutils.c
++++ b/Python/fileutils.c
+@@ -1762,6 +1762,26 @@ int
+ _Py_GetLocaleconvNumeric(PyObject **decimal_point, PyObject **thousands_sep,
+                          const char **grouping)
+ {
++#if defined(__ANDROID_API__) && __ANDROID_API__ < 20
++    /* On Android, before API 20, localeconv() was broken. */
++    if (decimal_point != NULL) {
++        *decimal_point = PyUnicode_FromString(".");
++        if (*decimal_point == NULL) {
++            return -1;
++        }
++    }
++    if (thousands_sep != NULL) {
++        *thousands_sep = PyUnicode_FromString(",");
++        if (*thousands_sep == NULL) {
++            return -1;
++        }
++    }
++
++    if (grouping != NULL) {
++        *grouping = "\003\003";
++    }
++    return 0;
++#else
+     int res = -1;
+ 
+     struct lconv *lc = localeconv();
+@@ -1832,4 +1852,5 @@ _Py_GetLocaleconvNumeric(PyObject **decimal_point, PyObject **thousands_sep,
+     }
+     PyMem_Free(oldloc);
+     return res;
++#endif
+ }
+
+From 0229b2f9e3ab81afeeb0d3053ca0b6cdf06768bf Mon Sep 17 00:00:00 2001
+From: Victor Stinner <victor.stinner@gmail.com>
+Date: Wed, 24 Jan 2018 19:06:09 +0100
+Subject: [PATCH 2/8] Fix my fix
+
+* _Py_GetLocaleconvNumeric(): use an empty string for thousands_sep
+  and grouping
+---
+ Python/fileutils.c | 4 ++--
+ 2 files changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/Python/fileutils.c b/Python/fileutils.c
+index 6b76bc1bab7d..f75b6a7d94cd 100644
+--- a/Python/fileutils.c
++++ b/Python/fileutils.c
+@@ -1771,14 +1771,14 @@ _Py_GetLocaleconvNumeric(PyObject **decimal_point, PyObject **thousands_sep,
+         }
+     }
+     if (thousands_sep != NULL) {
+-        *thousands_sep = PyUnicode_FromString(",");
++        *thousands_sep = PyUnicode_FromString("");
+         if (*thousands_sep == NULL) {
+             return -1;
+         }
+     }
+ 
+     if (grouping != NULL) {
+-        *grouping = "\003\003";
++        *grouping = "";
+     }
+     return 0;
+ #else
+
+From 31163f0d35308b7a35429770848304d40268852d Mon Sep 17 00:00:00 2001
+From: Victor Stinner <victor.stinner@gmail.com>
+Date: Wed, 24 Jan 2018 22:33:35 +0100
+Subject: [PATCH 3/8] fix typo: faild => failed
+
+---
+ Python/fileutils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Python/fileutils.c b/Python/fileutils.c
+index f75b6a7d94cd..fbb36b7d7507 100644
+--- a/Python/fileutils.c
++++ b/Python/fileutils.c
+@@ -1803,7 +1803,7 @@ _Py_GetLocaleconvNumeric(PyObject **decimal_point, PyObject **thousands_sep,
+     if (change_locale) {
+         oldloc = setlocale(LC_CTYPE, NULL);
+         if (!oldloc) {
+-            PyErr_SetString(PyExc_RuntimeWarning, "faild to get LC_CTYPE locale");
++            PyErr_SetString(PyExc_RuntimeWarning, "failed to get LC_CTYPE locale");
+             return -1;
+         }
+ 
+
+From e1fa5bd36239d58bd6d512ef24a681043df720a7 Mon Sep 17 00:00:00 2001
+From: Victor Stinner <victor.stinner@gmail.com>
+Date: Thu, 25 Jan 2018 14:33:01 +0100
+Subject: [PATCH 5/8] Add NEWS entry
+
+---
+ .../next/Core and Builtins/2018-01-25-14-32-58.bpo-32654.5dgO3n.rst      | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 Misc/NEWS.d/next/Core and Builtins/2018-01-25-14-32-58.bpo-32654.5dgO3n.rst
+
+diff --git a/Misc/NEWS.d/next/Core and Builtins/2018-01-25-14-32-58.bpo-32654.5dgO3n.rst b/Misc/NEWS.d/next/Core and Builtins/2018-01-25-14-32-58.bpo-32654.5dgO3n.rst
+new file mode 100644
+index 000000000000..55ad54848c73
+--- /dev/null
++++ b/Misc/NEWS.d/next/Core and Builtins/2018-01-25-14-32-58.bpo-32654.5dgO3n.rst	
+@@ -0,0 +1 @@
++Fix compilation errors on Android API 19.
+
+From 7725a7361cff6991fe87e6d593641c2bb7274919 Mon Sep 17 00:00:00 2001
+From: Victor Stinner <victor.stinner@gmail.com>
+Date: Thu, 25 Jan 2018 14:44:18 +0100
+Subject: [PATCH 7/8] Don't declare _locale.localeconv() on Android API 19
+
+---
+ Lib/locale.py           | 44 ++++++++++++++++++++++++--------------------
+ Modules/_localemodule.c | 13 +++++++++++++
+ 2 files changed, 37 insertions(+), 20 deletions(-)
+
+diff --git a/Lib/locale.py b/Lib/locale.py
+index 18079e73ad69..fd299ad9d1ef 100644
+--- a/Lib/locale.py
++++ b/Lib/locale.py
+@@ -43,11 +43,8 @@ def _strxfrm(s):
+     return s
+ 
+ try:
+-
+     from _locale import *
+-
+ except ImportError:
+-
+     # Locale emulation
+ 
+     CHAR_MAX = 127
+@@ -60,7 +57,30 @@ def _strxfrm(s):
+     LC_TIME = 2
+     Error = ValueError
+ 
+-    def localeconv():
++    def setlocale(category, value=None):
++        """ setlocale(integer,string=None) -> string.
++            Activates/queries locale processing.
++        """
++        if value not in (None, '', 'C'):
++            raise Error('_locale emulation only supports "C" locale')
++        return 'C'
++
++
++# These may or may not exist in _locale, so be sure to set them.
++if 'strxfrm' not in globals():
++    strxfrm = _strxfrm
++if 'strcoll' not in globals():
++    strcoll = _strcoll
++
++
++try:
++    _localeconv = localeconv
++except NameError:
++    # Locale emulation for localeconv() if the _locale module is missing
++    # or if the _locale module does not implement the localeconv() function
++    # (ex: Android API 19)
++
++    def _localeconv():
+         """ localeconv() -> dict.
+             Returns numeric and monetary locale-specific parameters.
+         """
+@@ -84,22 +104,6 @@ def localeconv():
+                 'mon_decimal_point': '',
+                 'int_frac_digits': 127}
+ 
+-    def setlocale(category, value=None):
+-        """ setlocale(integer,string=None) -> string.
+-            Activates/queries locale processing.
+-        """
+-        if value not in (None, '', 'C'):
+-            raise Error('_locale emulation only supports "C" locale')
+-        return 'C'
+-
+-# These may or may not exist in _locale, so be sure to set them.
+-if 'strxfrm' not in globals():
+-    strxfrm = _strxfrm
+-if 'strcoll' not in globals():
+-    strcoll = _strcoll
+-
+-
+-_localeconv = localeconv
+ 
+ # With this dict, you can override some items of localeconv's return value.
+ # This is useful for testing purposes.
+diff --git a/Modules/_localemodule.c b/Modules/_localemodule.c
+index f9eeeb72dd9e..6548668f24b2 100644
+--- a/Modules/_localemodule.c
++++ b/Modules/_localemodule.c
+@@ -38,6 +38,13 @@ This software comes with no warranty. Use at your own risk.
+ #include <windows.h>
+ #endif
+ 
++#if defined(__ANDROID_API__) && __ANDROID_API__ < 20
++  /* Before Android API 20, localeconv() is defined but not implemented,
++     leading to linker error. */
++#  define MISSING_LOCALECONV
++#endif
++
++
+ PyDoc_STRVAR(locale__doc__, "Support for POSIX locales.");
+ 
+ static PyObject *Error;
+@@ -128,6 +135,8 @@ PyLocale_setlocale(PyObject* self, PyObject* args)
+     return result_object;
+ }
+ 
++
++#ifndef MISSING_LOCALECONV
+ PyDoc_STRVAR(localeconv__doc__,
+ "() -> dict. Returns numeric and monetary locale-specific parameters.");
+ 
+@@ -222,6 +231,8 @@ PyLocale_localeconv(PyObject* self)
+     Py_DECREF(result);
+     return NULL;
+ }
++#endif
++
+ 
+ #if defined(HAVE_WCSCOLL)
+ PyDoc_STRVAR(strcoll__doc__,
+@@ -605,8 +616,10 @@ PyIntl_bind_textdomain_codeset(PyObject* self,PyObject*args)
+ static struct PyMethodDef PyLocale_Methods[] = {
+   {"setlocale", (PyCFunction) PyLocale_setlocale,
+    METH_VARARGS, setlocale__doc__},
++#ifndef MISSING_LOCALECONV
+   {"localeconv", (PyCFunction) PyLocale_localeconv,
+    METH_NOARGS, localeconv__doc__},
++#endif
+ #ifdef HAVE_WCSCOLL
+   {"strcoll", (PyCFunction) PyLocale_strcoll,
+    METH_VARARGS, strcoll__doc__},
+
+diff --git a/Python/pystrtod.c b/Python/pystrtod.c
+index 9bf9363862..ee2b60660e 100644
+--- a/Python/pystrtod.c
++++ b/Python/pystrtod.c
+@@ -165,7 +165,6 @@ _PyOS_ascii_strtod(const char *nptr, char **endptr)
+ {
+     char *fail_pos;
+     double val;
+-    struct lconv *locale_data;
+     const char *decimal_point;
+     size_t decimal_point_len;
+     const char *p, *decimal_point_pos;
+@@ -177,8 +176,13 @@ _PyOS_ascii_strtod(const char *nptr, char **endptr)
+ 
+     fail_pos = NULL;
+ 
+-    locale_data = localeconv();
++#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
++    /* Before Android API 21, localeconv() is broken. */
++    decimal_point = ".";
++#else
++    struct lconv *locale_data = localeconv();
+     decimal_point = locale_data->decimal_point;
++#endif
+     decimal_point_len = strlen(decimal_point);
+ 
+     assert(decimal_point_len != 0);
+@@ -444,8 +448,12 @@ _Py_string_to_number_with_underscores(
+ Py_LOCAL_INLINE(void)
+ change_decimal_from_locale_to_dot(char* buffer)
+ {
++#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
++    const char *decimal_point = ".";
++#else
+     struct lconv *locale_data = localeconv();
+     const char *decimal_point = locale_data->decimal_point;
++#endif
+ 
+     if (decimal_point[0] != '.' || decimal_point[1] != 0) {
+         size_t decimal_point_len = strlen(decimal_point);

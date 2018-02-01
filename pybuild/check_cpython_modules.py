@@ -17,7 +17,8 @@ REQUIRED_MODULES = set([
     'zlib',                         # depends on zlib
     'pyexpat',                      # depends on expat
     # fragile modules
-    '_decimal'
+    '_decimal',
+    'select',                       # Broken on android-19 (bpo-28914)
 ])
 
 PROHIBITED_MODULES = set([

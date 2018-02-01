@@ -1,0 +1,15 @@
+diff --git a/configure.ac b/configure.ac
+index b901f80765..3938c506b7 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -2146,8 +2146,8 @@ if test "$ac_cv_has_le64toh" = "yes"; then
+ fi
+ 
+ use_lfs=yes
+-# Don't use largefile support for GNU/Hurd
+-case $ac_sys_system in GNU*)
++# Don't use largefile support for GNU/Hurd and Android
++case $ac_sys_system in GNU*|Linux-android)
+   use_lfs=no
+ esac
+ 

@@ -1,0 +1,15 @@
+diff --git a/include/ncurses_cfg.hin b/include/ncurses_cfg.hin
+index fb89e762..0c25e04b 100644
+--- a/include/ncurses_cfg.hin
++++ b/include/ncurses_cfg.hin
+@@ -67,6 +67,10 @@
+ #endif
+ #endif
+ 
++#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
++#undef HAVE_LOCALE_H
++#endif
++
+ /*
+  * vile:cmode
+  */

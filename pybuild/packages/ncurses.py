@@ -1,3 +1,4 @@
+from ..patch import LocalPatch
 from ..source import GitSource
 from ..package import Package
 from ..util import target_arch
@@ -5,6 +6,9 @@ from ..util import target_arch
 
 class NCurses(Package):
     source = GitSource('https://github.com/ThomasDickey/ncurses-snapshots', alias='ncurses')
+    patches = [
+        LocalPatch('android-19-disable-locale'),
+    ]
 
     def prepare(self):
         self.run_with_env([
