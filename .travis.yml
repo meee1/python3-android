@@ -39,6 +39,7 @@ install:
       echo $(pwd)/devscripts/macports-chyen-pubkey.pem | sudo tee -a /opt/local/etc/macports/pubkeys.conf
   - |
       sudo port -Nb install python38 curl-ca-bundle gnutar
+      echo $(PYTHON) -m ensurepip --user
       $(PYTHON) -m ensurepip --user
       $(PYTHON) -m pip install --user python-gnupg
   - |
