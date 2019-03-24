@@ -28,6 +28,7 @@ class Python(Package):
         LocalPatch('cppflags'),
         LocalPatch('skip-build'),
         LocalPatch('lld-compatibility'),
+        LocalPatch('unversioned-library'),
     ]
 
     dependencies = list(env.packages)
