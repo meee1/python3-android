@@ -12,4 +12,7 @@ test:
 send:
 	$(PYTHON) -m pybuild.send
 
+download_sources:
+	$(PYTHON) -m pybuild.download_sources
+
 .PHONY: all clean test send
