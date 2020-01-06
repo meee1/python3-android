@@ -22,7 +22,6 @@ class BasePackage:
 
     source: Optional[Source] = None
     patches: List[Patch] = []
-    dependencies: List[str] = []
     skip_uploading: bool = False
     validpgpkeys: List[str] = []
 

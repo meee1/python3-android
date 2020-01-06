@@ -1,4 +1,3 @@
-from .. import env
 from ..source import GitSource
 from ..package import Package
 from ..patch import LocalPatch
@@ -29,8 +28,6 @@ class Python(Package):
         LocalPatch('skip-build'),
         LocalPatch('lld-compatibility'),
     ]
-
-    dependencies = list(env.packages)
 
     def init_build_env(self):
         super().init_build_env()

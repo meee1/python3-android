@@ -1,17 +1,13 @@
 import logging
 
+from .env import packages
 from .package import import_package
-
-built_packags: set = set()
 
 
 logger = logging.getLogger(__name__)
 
 
 def build_package(pkgname: str) -> None:
-    if pkgname in built_packags:
-        return
-
     pkg = import_package(pkgname)
 
     logger.info(f'Building {pkgname} {pkg.get_version()}')
@@ -28,15 +24,11 @@ def build_package(pkgname: str) -> None:
         for patch in getattr(pkg, 'patches', []):
             patch.apply(pkg.source, pkg)
 
-    for dep in pkg.dependencies:
-        build_package(dep)
-
     pkg.build()
-
-    built_packags.add(pkgname)
 
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
 
-    build_package('python')
+    for pkgname in packages:
+        build_package(pkgname)
