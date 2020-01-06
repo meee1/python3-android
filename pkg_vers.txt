@@ -1,4 +1,5 @@
 gdbm 1.18.1
 libuuid 2.34
+ncurses 6.1
 readline 8.0.001
 sqlite 3.30.1
