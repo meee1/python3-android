@@ -17,5 +17,11 @@ jobs:
     - name: Build the Docker image
       run: |
         docker build -t python3-android-base docker
-        docker run --rm -i --user $(id -u):$(id -g) -v $(pwd):/python3-android --env ARCH=arm --env ANDROID_API=21 python3-android-base
-    
+        docker run --rm -i --user $(id -u):$(id -g) -v $(pwd):/python3-android --env ARCH=arm64 --env ANDROID_API=21 python3-android-base
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        # Artifact name
+        name: python-android
+        # Directory containing files to upload
+        path: build/
