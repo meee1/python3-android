@@ -1,0 +1,21 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      run: docker build -t python3-android-base docker
+    - name: Build the Docker image
+      run: docker run --rm -it --user $(id -u):$(id -g) -v $(pwd):/python3-android --env ARCH=arm --env ANDROID_API=21 python3-android-base
+    
