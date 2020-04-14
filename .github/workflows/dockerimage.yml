@@ -18,10 +18,11 @@ jobs:
       run: |
         docker build -t python3-android-base docker
         docker run --rm -i --user $(id -u):$(id -g) -v $(pwd):/python3-android --env ARCH=arm64 --env ANDROID_API=21 python3-android-base
+        tar -czvf python-android.tar.gz build/
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
       with:
         # Artifact name
-        name: python-android
+        name: python-android.tar.gz
         # Directory containing files to upload
-        path: build/
+        path: python-android.tar.gz
